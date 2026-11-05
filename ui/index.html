@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FloaTodo</title>
+<style>
+/* ══ Token system ══════════════════════════════════════════════════════ */
+:root {
+  --bg:         #E8EAF0;
+  --bg-hover:   #ECEEF5;
+  --bg-pressed: #D8DAE2;
+  --sd: rgba(174,174,192,0.42);
+  --sl: rgba(255,255,255,0.95);
+  --text-pri:   #2D3748;
+  --text-sec:   #718096;
+  --text-muted: #A0AEC0;
+  --phase-work:  #7C6EBE;
+  --phase-short: #68B495;
+  --phase-long:  #6BA3D6;
+  --phase-idle:  #A0AEC0;
+  --amber:  #E6A817;
+  --green:  #68B495;
+  --red:    #E07070;
+  --acc:    #7C6EBE;
+  --neu-raised:
+    -5px -5px 12px var(--sl), 5px 5px 12px var(--sd);
+  --neu-raised-sm:
+    -3px -3px 8px var(--sl),  3px 3px 8px var(--sd);
+  --neu-inset:
+    inset -3px -3px 7px var(--sl), inset 3px 3px 7px var(--sd);
+  color-scheme: light;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+html,body{
+  width:100%;height:100%;
+  overflow:hidden;
+  background:var(--bg);
+  font-family:"Segoe UI","Microsoft YaHei UI",system-ui,sans-serif;
+  font-size:14px;color:var(--text-pri);
+  user-select:none;
+}
+
+/* ══ Window wrapper ════════════════════════════════════════════════════ */
+.window{
+  display:flex;flex-direction:column;
+  width:100%;height:100%;
+  background:var(--bg);
+  overflow:hidden;
+}
+
+/* ══ Title bar ════════════════════════════════════════════════════════ */
+.titlebar{
+  display:flex;align-items:center;
+  height:40px;padding:0 8px 0 14px;gap:6px;
+  flex-shrink:0;cursor:move;
+}
+.titlebar .ico{font-size:16px;line-height:1;flex-shrink:0;}
+.titlebar .title{
+  flex:1;font-size:13px;font-weight:700;
+  color:var(--text-pri);letter-spacing:.5px;
+}
+.tb-btns{display:flex;gap:3px;}
+.tb-btn{
+  width:28px;height:28px;border-radius:8px;border:none;
+  background:transparent;color:var(--text-muted);font-size:12px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background .15s,color .15s;font-family:inherit;
+}
+.tb-btn:hover{background:var(--bg-pressed);color:var(--text-sec);}
+.tb-btn.close:hover{background:var(--red);color:#fff;}
+.tb-btn#pin-btn.pinned{color:var(--acc);}
+
+/* ══ Divider ══════════════════════════════════════════════════════════ */
+.div{height:1px;background:var(--sd);opacity:.8;flex-shrink:0;}
+
+/* ══ Clock ════════════════════════════════════════════════════════════ */
+.clock{padding:12px 16px 10px;text-align:center;flex-shrink:0;}
+.clock-time{
+  font-family:Consolas,"Courier New",monospace;
+  font-size:36px;font-weight:300;color:var(--text-pri);
+  letter-spacing:3px;line-height:1.1;
+  font-variant-numeric:tabular-nums;
+}
+.colon{display:inline-block;animation:colonBlink 1s ease-in-out infinite;}
+@keyframes colonBlink{0%,100%{opacity:1}50%{opacity:.35}}
+.clock-date{margin-top:4px;font-size:11px;color:var(--text-sec);letter-spacing:.5px;}
+
+/* ══ Pomodoro ══════════════════════════════════════════════════════════ */
+.pom{
+  padding:8px 16px 10px;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  flex-shrink:0;
+}
+.pom-label{
+  font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;
+  color:var(--phase-idle);transition:color .6s ease;
+}
+/* Ring */
+.ring-wrap{
+  position:relative;width:180px;height:180px;flex-shrink:0;
+}
+.ring-wrap::before{
+  content:'';position:absolute;border-radius:50%;
+  inset:8px;background:var(--bg);
+  box-shadow:var(--neu-raised);
+  z-index:0;
+}
+.ring-wrap svg{position:relative;z-index:1;overflow:visible;}
+.ring-emoji{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  font-size:30px;z-index:2;line-height:1;
+  transition:opacity .3s;
+  pointer-events:none;
+}
+.ring-ripple{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  border-radius:50%;border:3px solid transparent;
+  pointer-events:none;opacity:0;z-index:3;
+  width:0;height:0;
+}
+.pom-time{
+  font-family:Consolas,monospace;
+  font-size:26px;font-weight:500;letter-spacing:1px;
+  color:var(--phase-idle);transition:color .6s ease;
+  font-variant-numeric:tabular-nums;
+}
+/* Buttons */
+.pom-btns{display:flex;gap:8px;align-items:center;-webkit-app-region:no-drag;}
+.pom-rounds{font-size:12px;color:var(--text-sec);}
+
+/* ══ Neu button ════════════════════════════════════════════════════════ */
+.neu-btn{
+  background:var(--bg);border:none;border-radius:10px;
+  color:var(--text-pri);font-family:inherit;font-size:12px;font-weight:500;
+  padding:8px 14px;cursor:pointer;box-shadow:var(--neu-raised-sm);
+  transition:box-shadow .15s,background .12s,color .15s;
+  white-space:nowrap;letter-spacing:.2px;
+}
+.neu-btn:hover{background:var(--bg-hover);}
+.neu-btn:active{box-shadow:var(--neu-inset);background:var(--bg-pressed);}
+.neu-btn.secondary{color:var(--text-sec);}
+.neu-btn.small{padding:8px 10px;color:var(--text-muted);font-size:15px;}
+.neu-btn.purple{background:var(--acc);color:#fff;box-shadow:none;}
+.neu-btn.purple:hover{background:#6a5eac;}
+.neu-btn.purple:active{background:#5a4f99;box-shadow:none;}
+
+/* ══ Task section ═════════════════════════════════════════════════════ */
+.task-section{flex:1;min-height:0;display:flex;flex-direction:column;}
+.task-hdr{
+  padding:6px 16px 4px;flex-shrink:0;
+  font-size:10px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;color:var(--text-muted);
+}
+.task-list{
+  flex:1;overflow-y:auto;padding:2px 10px;
+  scrollbar-width:thin;scrollbar-color:var(--sd) transparent;
+}
+.task-list::-webkit-scrollbar{width:4px;}
+.task-list::-webkit-scrollbar-thumb{background:var(--sd);border-radius:2px;}
+
+.task-empty{
+  text-align:center;padding:20px 8px;
+  color:var(--text-muted);font-size:12px;
+}
+
+.task-item{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;border-radius:10px;
+  background:var(--bg);box-shadow:var(--neu-raised-sm);
+  margin-bottom:6px;cursor:default;
+  transition:box-shadow .15s,opacity .2s;
+  animation:taskIn .22s cubic-bezier(.34,1.56,.64,1) both;
+  -webkit-app-region:no-drag;
+}
+@keyframes taskIn{
+  from{opacity:0;transform:translateY(-6px) scaleY(.85);transform-origin:top;}
+  to{opacity:1;transform:none;}
+}
+.task-item:hover{box-shadow:var(--neu-raised);}
+.task-item.done{opacity:.68;}
+.task-item.removing{
+  opacity:0!important;transform:translateX(14px);
+  transition:opacity .18s,transform .18s!important;
+  pointer-events:none;
+}
+.task-chk{
+  width:20px;height:20px;border-radius:6px;
+  border:2px solid var(--sd);background:var(--bg);
+  box-shadow:var(--neu-inset);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:12px;color:#fff;
+  transition:border-color .2s,background .2s,box-shadow .2s;
+}
+.task-chk.checked{background:var(--green);border-color:var(--green);box-shadow:none;}
+.task-name{
+  flex:1;font-size:13px;color:var(--text-pri);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  transition:color .2s;min-width:0;position:relative;
+}
+.task-name::after{
+  content:'';position:absolute;left:0;top:50%;height:1.5px;
+  background:var(--text-muted);width:0;transform:translateY(-50%);
+  transition:width .2s linear;
+}
+.task-item.done .task-name{color:var(--text-muted);}
+.task-item.done .task-name::after{width:100%;}
+.task-elapsed{
+  font-family:Consolas,monospace;font-size:10px;color:var(--text-muted);
+  min-width:36px;text-align:right;flex-shrink:0;
+  font-variant-numeric:tabular-nums;
+}
+.task-tbtn{
+  width:26px;height:26px;border-radius:7px;border:none;
+  background:transparent;color:var(--text-muted);font-size:13px;
+  cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .12s,color .12s;
+}
+.task-tbtn:hover{background:var(--bg-pressed);color:var(--text-sec);}
+.task-tbtn.on{color:var(--amber);background:rgba(230,168,23,.12);}
+
+/* ══ Add bar ══════════════════════════════════════════════════════════ */
+.add-bar{padding:4px 12px 12px;flex-shrink:0;-webkit-app-region:no-drag;}
+.add-toggle{
+  width:100%;padding:9px;border-radius:12px;border:none;
+  background:var(--bg);box-shadow:var(--neu-raised-sm);
+  color:var(--acc);font-family:inherit;font-size:13px;font-weight:600;
+  cursor:pointer;letter-spacing:.5px;
+  transition:box-shadow .15s,background .12s;
+}
+.add-toggle:hover{background:var(--bg-hover);}
+.add-toggle:active{box-shadow:var(--neu-inset);background:var(--bg-pressed);}
+.add-row{
+  display:none;gap:6px;margin-top:7px;align-items:center;
+}
+.add-row.open{display:flex;animation:slideDown .2s ease both;}
+@keyframes slideDown{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:none;}}
+.add-input{
+  flex:1;border:none;outline:none;
+  background:var(--bg-pressed);border-radius:10px;
+  padding:8px 12px;color:var(--text-pri);
+  font-family:inherit;font-size:13px;
+  box-shadow:var(--neu-inset);
+}
+.add-input::placeholder{color:var(--text-muted);}
+.add-cancel{
+  width:30px;height:34px;background:transparent;border:none;
+  color:var(--text-muted);font-size:15px;cursor:pointer;
+  border-radius:8px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .12s;
+}
+.add-cancel:hover{background:var(--bg-pressed);}
+
+/* ══ Mini mode — 125×125px 紧凑浮窗 ════════════════════════════════════
+   布局：标题栏(28px) + 圆环区域(97px) = 125px
+   控制按钮挪到标题栏，圆环缩为 84px，内部显示 emoji + 倒计时
+ ═══════════════════════════════════════════════════════════════════════*/
+body.mini .clock,
+body.mini .div,
+body.mini .task-section,
+body.mini .add-bar,
+body.mini .pom-label,
+body.mini .pom-btns,
+body.mini .pom-rounds,
+body.mini .pom-time,
+body.mini .mini-ctrl      { display:none !important; } /* 底部控制栏不用了 */
+
+body.mini                 { overflow:hidden; }
+
+/* 标题栏：space-between 确保 ▶⏭ 在左，⤡✕ 在右（不会被截断）*/
+body.mini .titlebar       { height:28px; padding:0 4px 0 6px; gap:0;
+                             justify-content:space-between; }
+body.mini .titlebar .ico  { display:none; }
+body.mini .titlebar .title{ display:none; }
+body.mini #pin-btn        { display:none; }
+body.mini #min-btn        { display:none; }
+body.mini .tb-mini-ctrl   { display:flex !important; align-items:center; gap:2px; }
+body.mini .tb-btns        { gap:2px; }  /* mini-btn(⤡) + close(✕) 紧凑排列 */
+
+/* 圆环区域：撑满剩余高度，ring 居中显示 */
+body.mini .pom            { padding:4px 0 4px; gap:0; align-items:center;
+                             justify-content:center; flex:1; min-height:0; }
+body.mini .ring-wrap      { width:84px; height:84px; }
+body.mini .ring-wrap svg  { width:84px !important; height:84px !important; }
+body.mini .ring-emoji     { font-size:20px !important; }
+body.mini .ring-wrap::before { inset:3px; }
+body.mini .ring-ripple    { display:none; }
+
+/* 圆环内迷你倒计时 */
+.ring-mini-time {
+  display:none; position:absolute;
+  top:calc(50% + 10px); left:50%; transform:translateX(-50%);
+  font-family:Consolas,monospace; font-size:12px; font-weight:500;
+  font-variant-numeric:tabular-nums; color:var(--phase-idle);
+  white-space:nowrap; pointer-events:none; z-index:3;
+}
+body.mini .ring-mini-time  { display:block; }
+body.mini .ring-emoji      { top:calc(50% - 8px) !important; font-size:18px !important; }
+</style>
+</head>
+<body>
+<div class="window">
+
+  <!-- Title bar (draggable via custom JS) -->
+  <div class="titlebar" id="titlebar">
+    <span class="ico">🍅</span>
+    <span class="title">FloaTodo</span>
+    <!-- Mini 模式专用控制（平时隐藏，body.mini 时显示） -->
+    <div class="tb-mini-ctrl" style="display:none;">
+      <button class="tb-btn" id="mini-start" title="开始/暂停" onclick="toggleStart()">▶</button>
+      <button class="tb-btn" title="跳过" onclick="api('skipPhase')" style="font-size:11px;">⏭</button>
+    </div>
+    <div class="tb-btns">
+      <button class="tb-btn" id="mini-btn" title="迷你模式" onclick="toggleMini()">⊟</button>
+      <button class="tb-btn" id="pin-btn"  title="切换置顶" onclick="togglePin()">📌</button>
+      <button class="tb-btn" id="min-btn"  title="最小化到任务栏" onclick="api('minimizeWindow')">—</button>
+      <button class="tb-btn close" title="关闭" onclick="api('closeWindow')">✕</button>
+    </div>
+  </div>
+
+  <div class="div"></div>
+
+  <!-- Clock -->
+  <div class="clock">
+    <div class="clock-time" id="clock-time" aria-live="polite">
+      <span id="ch">00</span><span class="colon">:</span><span
+      id="cm">00</span><span class="colon">:</span><span id="cs">00</span>
+    </div>
+    <div class="clock-date" id="clock-date">加载中…</div>
+  </div>
+
+  <div class="div"></div>
+
+  <!-- Pomodoro -->
+  <div class="pom">
+    <div class="pom-label" id="pom-label">IDLE</div>
+
+    <div class="ring-wrap" id="ring-wrap" title="点击返回完整模式">
+      <svg width="180" height="180" viewBox="0 0 180 180" aria-hidden="true">
+        <circle cx="90" cy="90" r="72" fill="none" stroke="#D0D3DC"
+          stroke-width="8" transform="rotate(-90 90 90)"/>
+        <circle id="pom-arc" cx="90" cy="90" r="72" fill="none"
+          stroke="#A0AEC0" stroke-width="8" stroke-linecap="round"
+          stroke-dasharray="452.39" stroke-dashoffset="452.39"
+          transform="rotate(-90 90 90)"
+          style="transition:stroke-dashoffset .9s ease,stroke .6s ease"/>
+      </svg>
+      <div class="ring-emoji" id="ring-emoji">🍅</div>
+      <!-- mini 模式专用：圆环内倒计时（正常模式不显示） -->
+      <div class="ring-mini-time" id="ring-mini-time"></div>
+      <div class="ring-ripple" id="ring-ripple"></div>
+    </div>
+
+    <div class="pom-time" id="pom-time">25:00</div>
+
+    <div class="pom-btns">
+      <button class="neu-btn" id="btn-start" onclick="toggleStart()">▶  开始</button>
+      <button class="neu-btn secondary" onclick="api('skipPhase')">⏭  跳过</button>
+      <button class="neu-btn small" onclick="api('resetPomodoro')" title="重置">↺</button>
+    </div>
+
+    <div class="pom-rounds" id="pom-rounds">🍅 × 0</div>
+
+    <!-- Mini mode controls (hidden normally) -->
+    <div class="mini-ctrl" style="display:none;gap:10px;margin-top:4px;">
+      <button class="neu-btn small" id="mini-play" onclick="toggleStart()" style="font-size:16px;padding:6px 12px;">▶</button>
+      <button class="neu-btn small" onclick="api('skipPhase')" style="font-size:14px;padding:6px 10px;">⏭</button>
+    </div>
+  </div>
+
+  <div class="div"></div>
+
+  <!-- Task section -->
+  <div class="task-section">
+    <div class="task-hdr" id="task-hdr">TODAY  (0/0)</div>
+    <div class="task-list" id="task-list" role="list">
+      <div class="task-empty" id="task-empty">还没有任务，添加一个开始吧 ✨</div>
+    </div>
+  </div>
+
+  <!-- Add task bar -->
+  <div class="add-bar">
+    <button class="add-toggle" id="add-toggle" onclick="toggleAdd()">＋  添加任务</button>
+    <div class="add-row" id="add-row">
+      <input class="add-input" id="add-input" type="text"
+        placeholder="输入任务名称，回车确认…" maxlength="60"
+        onkeydown="if(event.key==='Enter')submitTask();if(event.key==='Escape')collapseAdd()">
+      <button class="neu-btn purple" onclick="submitTask()" style="flex-shrink:0;padding:8px 12px;">确认</button>
+      <button class="add-cancel" onclick="collapseAdd()">✕</button>
+    </div>
+  </div>
+
+</div><!-- .window -->
+
+<script>
+// ════ Constants ═══════════════════════════════════════════════════════
+const CIRCUMFERENCE = 452.39;
+const PHASE_COLORS  = {work:'#7C6EBE',short:'#68B495',long:'#6BA3D6',idle:'#A0AEC0'};
+const PHASE_LABELS  = {work:'专注',short:'短休',long:'长休',idle:'IDLE'};
+const PHASE_EMOJI   = {work:'⚡',short:'☕',long:'🌿',idle:'🍅'};
+const WEEKDAY_ZH    = ['日','一','二','三','四','五','六'];
+
+// ════ State ════════════════════════════════════════════════════════════
+let tasks = [], pomRunning = false, pomPhase = 'idle';
+let activeTimer = null, addOpen = false, miniMode = false, pinned = true;
+
+// ════ 通信核心：HTTP 命令服务器（最可靠，绕过 pywebview bridge）══════
+// Python 在页面加载后通过 evaluate_js 注入端口号
+window.CMD_PORT = 0;
+// Python 时钟激活标志——一旦收到 Python 推送的 onTick，JS 本地时钟停止
+let _pyClockActive = false;
+
+async function api(method, ...args) {
+  // 优先：HTTP 命令服务器（JS fetch → Python http.server）
+  if (window.CMD_PORT) {
+    try {
+      const r = await fetch('http://127.0.0.1:' + window.CMD_PORT, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({method, args})
+      });
+      if (r.ok) return (await r.json()).result;
+    } catch(e) { /* fallthrough */ }
+  }
+  // 备选：pywebview API bridge
+  if (window.pywebview && window.pywebview.api &&
+      typeof window.pywebview.api[method] === 'function') {
+    try { return await window.pywebview.api[method](...args); } catch(e) {}
+  }
+  // 浏览器本地模拟（browserFallback 会填充此函数）
+  if (window._browserApi) return window._browserApi(method, ...args);
+  return null;
+}
+window.api = api; // 让 browserFallback 和外部代码也能用 window.api
+
+// 页面初始化（由 Python 在 events.loaded 后通过 evaluate_js 触发）
+async function initApp() {
+  const json = await api('getInitialState');
+  if (json) await app.init(json);
+}
+
+// ════ App object (callable from Python via evaluate_js) ═══════════════
+window.app = {
+  onTick(timeStr, dateStr) {
+    _pyClockActive = true;   // Python 时钟已激活，停止 JS 本地时钟
+    const [h,m,s] = timeStr.split(':');
+    document.getElementById('ch').textContent = h;
+    document.getElementById('cm').textContent = m;
+    document.getElementById('cs').textContent = s;
+    document.getElementById('clock-date').textContent = dateStr;
+  },
+  onPomTick(remaining, total) {
+    updateRing(remaining, total, pomPhase);
+    updatePomTime(remaining);
+  },
+  onPhaseChanged(phase, duration) {
+    pomPhase = phase;
+    updatePhaseDisplay(phase);
+    updateRing(duration, duration, phase);
+    updatePomTime(duration);
+    if (phase === 'idle') { pomRunning = false; updateStartBtn(); }
+  },
+  onRounds(n) {
+    document.getElementById('pom-rounds').textContent = `🍅 × ${n}`;
+    playRipple();
+  },
+  onPomDone() { playRipple(); },
+  onTaskAdded(task) {
+    tasks.push(task);
+    renderTask(task, true);
+    updateHeader();
+  },
+  onTaskDeleted(taskId) {
+    tasks = tasks.filter(t => t.id != taskId);
+    const el = document.querySelector(`.task-item[data-id="${taskId}"]`);
+    if (el) {
+      el.classList.add('removing');
+      setTimeout(() => { el.remove(); updateHeader(); checkEmpty(); }, 200);
+    }
+  },
+  onTaskUpdated(task) {
+    const idx = tasks.findIndex(t => t.id == task.id);
+    if (idx >= 0) tasks[idx] = task;
+    const el = document.querySelector(`.task-item[data-id="${task.id}"]`);
+    if (!el) return;
+    el.classList.toggle('done', task.done);
+    const chk = el.querySelector('.task-chk');
+    if (chk) { chk.classList.toggle('checked', task.done); chk.textContent = task.done ? '✓' : ''; }
+    updateHeader();
+  },
+  onElapsed(taskId, elapsed) {
+    const el = document.querySelector(`.task-item[data-id="${taskId}"] .task-elapsed`);
+    if (el) el.textContent = fmtElapsed(elapsed);
+    const t = tasks.find(t => t.id == taskId);
+    if (t) t.elapsed = elapsed;
+  },
+  async init(stateJson) {
+    const s = JSON.parse(stateJson);
+    s.tasks.forEach(t => { tasks.push(t); renderTask(t, false); });
+    document.getElementById('pom-rounds').textContent = `🍅 × ${s.rounds}`;
+    updateHeader(); checkEmpty();
+  }
+};
+
+// ════ Ring ════════════════════════════════════════════════════════════
+function updateRing(remaining, total, phase) {
+  const color   = PHASE_COLORS[phase] || '#A0AEC0';
+  const arc     = document.getElementById('pom-arc');
+  const emoji   = document.getElementById('ring-emoji');
+  arc.style.stroke = color;
+  emoji.textContent = PHASE_EMOJI[phase] || '🍅';
+  if (total > 0 && phase !== 'idle') {
+    arc.style.strokeDashoffset = CIRCUMFERENCE * (1 - remaining / total);
+  } else {
+    arc.style.strokeDashoffset = CIRCUMFERENCE;
+  }
+}
+
+function updatePomTime(remaining) {
+  const phase = pomPhase;
+  const color = PHASE_COLORS[phase] || '#A0AEC0';
+  const tl = document.getElementById('pom-time');
+  tl.style.color = color;
+  const timeStr = phase === 'idle' ? '25:00' :
+    `${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
+  tl.textContent = timeStr;
+  // 同步圆环内 mini 倒计时
+  const mt = document.getElementById('ring-mini-time');
+  if (mt) { mt.textContent = phase === 'idle' ? '' : timeStr; mt.style.color = color; }
+}
+
+function updatePhaseDisplay(phase) {
+  const color = PHASE_COLORS[phase] || '#A0AEC0';
+  const lbl   = document.getElementById('pom-label');
+  lbl.textContent = PHASE_LABELS[phase] || 'IDLE';
+  lbl.style.color = color;
+}
+
+function updateStartBtn() {
+  const btn = document.getElementById('btn-start');
+  btn.textContent = pomRunning ? '⏸  暂停' : (pomPhase !== 'idle' ? '▶  继续' : '▶  开始');
+  // 同步标题栏 mini-start 按钮
+  const ms = document.getElementById('mini-start');
+  if (ms) ms.textContent = pomRunning ? '⏸' : '▶';
+}
+
+function playRipple() {
+  const el = document.getElementById('ring-ripple');
+  const color = PHASE_COLORS[pomPhase] || '#7C6EBE';
+  el.style.transition = 'none';
+  el.style.borderColor = color;
+  el.style.width = el.style.height = '0';
+  el.style.opacity = '0.85';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    el.style.transition = 'width .65s ease-out,height .65s ease-out,opacity .65s ease-out';
+    el.style.width = el.style.height = '155px';
+    el.style.opacity = '0';
+  }));
+}
+
+// ════ Pomodoro controls ════════════════════════════════════════════════
+async function toggleStart() {
+  if (pomRunning) {
+    pomRunning = false;
+    await api('pausePomodoro');
+  } else {
+    pomRunning = true;
+    await api('startPomodoro');
+  }
+  updateStartBtn();
+}
+
+// ════ Tasks ════════════════════════════════════════════════════════════
+function fmtElapsed(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderTask(task, animate) {
+  document.getElementById('task-empty').style.display = 'none';
+  const list = document.getElementById('task-list');
+
+  const item = document.createElement('div');
+  item.className = 'task-item' + (task.done ? ' done' : '');
+  item.dataset.id = task.id;
+  item.setAttribute('role', 'listitem');
+  if (!animate) item.style.animation = 'none';
+
+  item.innerHTML = `
+    <div class="task-chk ${task.done?'checked':''}" role="checkbox"
+         aria-checked="${task.done}" tabindex="0">${task.done?'✓':''}</div>
+    <div class="task-name">${escHtml(task.title)}</div>
+    <div class="task-elapsed">${fmtElapsed(task.elapsed)}</div>
+    <button class="task-tbtn" title="计时">⏱</button>`;
+
+  // Check click
+  const chk = item.querySelector('.task-chk');
+  chk.addEventListener('click', async () => {
+    const done = !task.done;
+    task.done = done;
+    item.classList.toggle('done', done);
+    chk.classList.toggle('checked', done);
+    chk.textContent = done ? '✓' : '';
+    updateHeader();
+    if (done) await api('completeTask', task.id);
+    else      await api('uncompleteTask', task.id);
+  });
+  chk.addEventListener('keydown', e => {
+    if (e.key === ' ' || e.key === 'Enter') chk.click();
+  });
+
+  // Timer btn
+  const tbtn = item.querySelector('.task-tbtn');
+  let timerOn = false;
+  tbtn.addEventListener('click', async () => {
+    if (!timerOn) {
+      // stop previous
+      if (activeTimer !== null && activeTimer !== task.id) {
+        const prev = document.querySelector(`.task-item[data-id="${activeTimer}"] .task-tbtn`);
+        if (prev) { prev.textContent = '⏱'; prev.classList.remove('on'); }
+        await api('stopTaskTimer', activeTimer);
+      }
+      await api('startTaskTimer', task.id);
+      activeTimer = task.id; timerOn = true;
+      tbtn.textContent = '⏸'; tbtn.classList.add('on');
+    } else {
+      await api('stopTaskTimer', task.id);
+      activeTimer = null; timerOn = false;
+      tbtn.textContent = '⏱'; tbtn.classList.remove('on');
+    }
+  });
+
+  // Context menu
+  item.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    showCtxMenu(e.clientX, e.clientY, task.id, task.title);
+  });
+
+  list.appendChild(item);
+}
+
+// Context menu
+let ctxEl = null;
+function showCtxMenu(x, y, taskId, title) {
+  removeCtx();
+  ctxEl = document.createElement('div');
+  ctxEl.style.cssText = `
+    position:fixed;left:${x}px;top:${y}px;z-index:9999;
+    background:var(--bg);border-radius:10px;
+    box-shadow:var(--neu-raised),0 8px 24px rgba(0,0,0,.18);
+    padding:4px;min-width:130px;`;
+  const it = document.createElement('div');
+  it.textContent = '🗑  删除任务';
+  it.style.cssText = `
+    padding:8px 14px;border-radius:7px;cursor:pointer;
+    font-size:13px;color:var(--text-pri);transition:background .1s;`;
+  it.onmouseenter = () => it.style.background = 'var(--bg-pressed)';
+  it.onmouseleave = () => it.style.background = '';
+  it.onclick = async () => { await api('deleteTask', taskId); removeCtx(); };
+  ctxEl.appendChild(it);
+  document.body.appendChild(ctxEl);
+  setTimeout(() => document.addEventListener('click', removeCtx, {once:true}), 10);
+}
+function removeCtx() {
+  if (ctxEl) { ctxEl.remove(); ctxEl = null; }
+  document.removeEventListener('click', removeCtx);
+}
+
+function updateHeader() {
+  const total = tasks.length;
+  const done  = tasks.filter(t => t.done).length;
+  document.getElementById('task-hdr').textContent = `TODAY  (${done}/${total})`;
+}
+
+function checkEmpty() {
+  const hasItems = document.querySelector('.task-item');
+  document.getElementById('task-empty').style.display = hasItems ? 'none' : '';
+}
+
+// ════ Add bar ══════════════════════════════════════════════════════════
+function toggleAdd() { addOpen ? collapseAdd() : expandAdd(); }
+function expandAdd() {
+  addOpen = true;
+  document.getElementById('add-toggle').textContent = '▲  收起';
+  document.getElementById('add-row').classList.add('open');
+  setTimeout(() => document.getElementById('add-input').focus(), 60);
+}
+function collapseAdd() {
+  addOpen = false;
+  document.getElementById('add-toggle').textContent = '＋  添加任务';
+  document.getElementById('add-row').classList.remove('open');
+  document.getElementById('add-input').value = '';
+}
+async function submitTask() {
+  const title = document.getElementById('add-input').value.trim();
+  if (!title) return;
+  document.getElementById('add-input').value = '';
+  collapseAdd();
+  await api('addTask', title);
+}
+
+// ════ Titlebar drag (pywebview-drag-region fallback) ══════════════════
+(function setupDrag() {
+  const bar = document.getElementById('titlebar');
+  if (!bar) return;
+  let dragging = false, ox = 0, oy = 0;
+  bar.addEventListener('mousedown', e => {
+    // 只在点击 titlebar 背景（非按钮区域）时才开始拖拽
+    if (e.target.closest('button, input, select, .tb-btns')) return;
+    if (e.button !== 0) return;
+    dragging = true; ox = e.screenX; oy = e.screenY;
+    // 不调用 preventDefault()：body 已有 user-select:none，无需阻断默认行为
+    // 调用 preventDefault() 会阻断 button 的 click 事件链
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const dx = e.screenX - ox, dy = e.screenY - oy;
+    ox = e.screenX; oy = e.screenY;
+    if (window.pywebview) window.pywebview.api.moveWindow(dx, dy);
+  });
+  document.addEventListener('mouseup', () => { dragging = false; });
+})();
+
+// ════ 迷你模式：点击圆环或拖拽区域可退出（双重保险，以防 ⤡ 按钮被截断）══
+(function setupMiniClick() {
+  // 点击 ring-wrap 退出迷你模式（不干扰内部按钮）
+  const rw = document.getElementById('ring-wrap');
+  if (rw) {
+    rw.style.cursor = 'pointer';
+    rw.addEventListener('click', (e) => {
+      if (miniMode && !e.target.closest('button')) toggleMini();
+    });
+  }
+  // 拖拽区（titlebar 背景）双击也退出
+  const bar = document.getElementById('titlebar');
+  if (bar) {
+    bar.addEventListener('dblclick', (e) => {
+      if (!e.target.closest('button') && miniMode) toggleMini();
+    });
+  }
+})();
+
+// ════ Window controls ══════════════════════════════════════════════════
+function togglePin() {
+  pinned = !pinned;
+  document.getElementById('pin-btn').classList.toggle('pinned', pinned);
+}
+
+async function toggleMini() {
+  miniMode = !miniMode;
+  document.body.classList.toggle('mini', miniMode);
+  const btn = document.getElementById('mini-btn');
+  if (miniMode) {
+    btn.textContent = '⤡';
+    btn.title = '恢复完整模式';
+    // 同步 mini-start 按钮状态
+    const ms = document.getElementById('mini-start');
+    if (ms) ms.textContent = pomRunning ? '⏸' : '▶';
+    setTimeout(async () => { await api('resizeWindow', 125, 125); }, 50);
+  } else {
+    btn.textContent = '⊟';
+    btn.title = '迷你模式';
+    await api('resizeWindow', 320, 640);
+  }
+}
+
+// ════ Browser-only fallback（仅浏览器预览用，不覆盖 window.api）════════
+(function browserFallback() {
+  // 有 CMD_PORT 说明在 pywebview 中运行，不需要 fallback
+  // 注：pywebview 下 CMD_PORT 由 Python 在 events.loaded 后注入
+  // 此时脚本执行阶段 CMD_PORT 还是 0，所以也进入 fallback
+  // 但当 CMD_PORT 被注入后，api() 函数会优先用 fetch
+
+  // Live clock（仅浏览器预览；_pyClockActive=true 后自动停止）
+  function tickClock() {
+    if (_pyClockActive) return;  // Python 已接管时钟，停止 JS 本地时钟
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2,'0');
+    const m = String(now.getMinutes()).padStart(2,'0');
+    const s = String(now.getSeconds()).padStart(2,'0');
+    const days = ['日','一','二','三','四','五','六'];
+    app.onTick(`${h}:${m}:${s}`,
+      `周${days[now.getDay()]}  ${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`);
+  }
+  setInterval(tickClock, 1000); tickClock();
+
+  // Pomodoro 本地模拟
+  const POM = {work:25*60,short:5*60,long:15*60};
+  let rem=0,tot=0,ph='idle',running=false,rounds=0;
+  function enterPhase(p){ph=p;pomPhase=p;rem=tot=POM[p]||0;app.onPhaseChanged(p,rem);}
+
+  // 注册为 _browserApi，api() 函数在无 CMD_PORT 且无 pywebview 时会调用它
+  window._browserApi = function(method,...args){
+    if(method==='startPomodoro'){if(ph==='idle')enterPhase('work');running=true;pomRunning=true;}
+    else if(method==='pausePomodoro'){running=false;pomRunning=false;}
+    else if(method==='skipPhase'){
+      if(ph==='work'){rounds++;app.onRounds(rounds);enterPhase(rounds%4===0?'long':'short');}
+      else enterPhase('work');
+      running=true;pomRunning=true;
+    }
+    else if(method==='resetPomodoro'){running=false;pomRunning=false;enterPhase('idle');}
+    else if(method==='addTask'){
+      const t={id:Date.now(),title:args[0],done:false,elapsed:0};
+      tasks.push(t);app.onTaskAdded(t);
+    }
+    else if(method==='deleteTask')app.onTaskDeleted(args[0]);
+    else if(method==='completeTask'){const t=tasks.find(x=>x.id==args[0]);if(t){t.done=true;app.onTaskUpdated(t);}}
+    else if(method==='uncompleteTask'){const t=tasks.find(x=>x.id==args[0]);if(t){t.done=false;app.onTaskUpdated(t);}}
+    return Promise.resolve(null);
+  };
+
+  setInterval(()=>{
+    if(!running||ph==='idle')return;
+    rem--;
+    if(rem<=0){
+      if(ph==='work'){rounds++;app.onRounds(rounds);}
+      enterPhase(ph==='work'?(rounds%4===0?'long':'short'):'work');
+      running=true;pomRunning=true;
+    } else { app.onPomTick(rem,tot); }
+  },1000);
+})();
+
+// ════ pywebview bridge 备选初始化（CMD server 失败时的保底）═════════════
+window.addEventListener('pywebviewready', async () => {
+  if (!window.CMD_PORT && window.pywebview && window.pywebview.api) {
+    const json = await window.pywebview.api.getInitialState();
+    if (json) await app.init(json);
+  }
+});
+</script>
+</body>
+</html>

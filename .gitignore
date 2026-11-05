@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# 运行时数据（本地 SQLite 和设置，不上传）
+data/tasks.db
+data/settings.json
+data/
+
+# 旧版 tkinter UI（已弃用，保留但不追踪）
+ui/app_window.py
+ui/main_window.py
+ui/mini_window.py
+ui/neu_draw.py
+ui/painters/
+ui/widgets/
+ui/animations/
+
+# 虚拟环境
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.user
+
+# 系统
+.DS_Store
+Thumbs.db

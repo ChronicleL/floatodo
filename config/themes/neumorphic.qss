@@ -1,0 +1,274 @@
+/* ======================================================
+   FloaTodo — Neumorphic 新拟态主题 QSS
+   基础背景色: #E8EAF0
+   阴影色:    #C8CAD4
+   高光色:    #FFFFFF
+   主字体:    Segoe UI Variable / Microsoft YaHei UI
+   ====================================================== */
+
+/* ── 全局 ─────────────────────────────────────────── */
+* {
+    font-family: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", sans-serif;
+    outline: none;
+    border: none;
+}
+
+QWidget {
+    background-color: #E8EAF0;
+    color: #2D3748;
+}
+
+/* ── 时钟组件 ─────────────────────────────────────── */
+QLabel#clockTime {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 36px;
+    font-weight: 300;
+    letter-spacing: 3px;
+    color: #2D3748;
+    background: transparent;
+}
+
+QLabel#clockDate {
+    font-size: 11px;
+    color: #718096;
+    background: transparent;
+    letter-spacing: 1px;
+}
+
+/* ── 番茄钟组件 ─────────────────────────────────── */
+QLabel#pomPhaseLabel {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: #7C6EBE;
+    background: transparent;
+    text-transform: uppercase;
+}
+
+QLabel#pomTimeLabel {
+    font-family: "Consolas", monospace;
+    font-size: 28px;
+    font-weight: 500;
+    color: #7C6EBE;
+    background: transparent;
+}
+
+QLabel#pomRoundsLabel {
+    font-size: 12px;
+    color: #718096;
+    background: transparent;
+}
+
+/* 番茄钟按钮（主按钮外凸） */
+QPushButton#pomBtn {
+    background-color: #E8EAF0;
+    color: #2D3748;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 0 12px;
+}
+QPushButton#pomBtn:hover {
+    background-color: #ECEEF5;
+}
+QPushButton#pomBtn:pressed {
+    background-color: #D8DAE2;
+}
+
+QPushButton#pomBtnSecondary {
+    background-color: #E8EAF0;
+    color: #718096;
+    border-radius: 10px;
+    font-size: 13px;
+    padding: 0 12px;
+}
+QPushButton#pomBtnSecondary:hover {
+    background-color: #ECEEF5;
+}
+QPushButton#pomBtnSecondary:pressed {
+    background-color: #D8DAE2;
+}
+
+QPushButton#pomBtnSmall {
+    background-color: #E8EAF0;
+    color: #A0AEC0;
+    border-radius: 10px;
+    font-size: 15px;
+}
+QPushButton#pomBtnSmall:hover {
+    color: #718096;
+    background-color: #ECEEF5;
+}
+QPushButton#pomBtnSmall:pressed {
+    background-color: #D8DAE2;
+}
+
+/* ── 分割线 ────────────────────────────────────────── */
+QLabel#sectionHeader {
+    font-size: 12px;
+    font-weight: 600;
+    color: #A0AEC0;
+    letter-spacing: 2px;
+    background: transparent;
+    padding: 4px 8px 4px 8px;
+}
+
+/* ── 任务条目 ─────────────────────────────────────── */
+QLabel#taskTitle {
+    font-size: 13px;
+    color: #2D3748;
+    background: transparent;
+}
+
+QLabel#taskTimer {
+    font-family: "Consolas", monospace;
+    font-size: 11px;
+    color: #A0AEC0;
+    background: transparent;
+}
+
+QPushButton#taskTimerBtn {
+    background: transparent;
+    color: #A0AEC0;
+    font-size: 14px;
+    border-radius: 6px;
+}
+QPushButton#taskTimerBtn:hover {
+    background-color: #D8DAE2;
+    color: #718096;
+}
+QPushButton#taskTimerBtn:checked {
+    color: #E6A817;
+    background-color: #EEE8D5;
+}
+
+/* 复选框 */
+QCheckBox {
+    background: transparent;
+}
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    background-color: #E8EAF0;
+    border: 1.5px solid #C8CAD4;
+}
+QCheckBox::indicator:checked {
+    background-color: #68B495;
+    border-color: #68B495;
+    image: none;
+}
+QCheckBox::indicator:checked:after {
+    content: "✓";
+}
+QCheckBox::indicator:hover {
+    border-color: #7C6EBE;
+}
+
+/* ── 滚动条 ─────────────────────────────────────────*/
+QScrollArea#taskScrollArea {
+    background: transparent;
+}
+QScrollBar:vertical {
+    background: transparent;
+    width: 5px;
+    margin: 2px 0;
+}
+QScrollBar::handle:vertical {
+    background: #C8CAD4;
+    border-radius: 2px;
+    min-height: 20px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #A0AEC0;
+}
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: transparent;
+}
+
+/* ── 添加任务区域 ──────────────────────────────────── */
+QPushButton#addTaskBtn {
+    background-color: #E8EAF0;
+    color: #7C6EBE;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+QPushButton#addTaskBtn:hover {
+    background-color: #ECEEF5;
+}
+QPushButton#addTaskBtn:pressed {
+    background-color: #D8DAE2;
+}
+
+QLineEdit#addTaskInput {
+    background-color: #E8EAF0;
+    border-radius: 10px;
+    color: #2D3748;
+    font-size: 13px;
+    padding: 0 10px;
+    selection-background-color: #7C6EBE;
+    selection-color: white;
+}
+QLineEdit#addTaskInput:focus {
+    background-color: #D8DAE2;
+}
+
+QPushButton#addOkBtn {
+    background-color: #7C6EBE;
+    color: white;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+}
+QPushButton#addOkBtn:hover {
+    background-color: #6A5EAA;
+}
+QPushButton#addOkBtn:pressed {
+    background-color: #5A4F99;
+}
+
+QPushButton#addCancelBtn {
+    background-color: #E8EAF0;
+    color: #A0AEC0;
+    border-radius: 10px;
+    font-size: 14px;
+}
+QPushButton#addCancelBtn:hover {
+    background-color: #ECEEF5;
+    color: #718096;
+}
+
+/* ── 右键菜单 ─────────────────────────────────────── */
+QMenu#taskContextMenu {
+    background-color: #E8EAF0;
+    border-radius: 10px;
+    padding: 4px;
+}
+QMenu#taskContextMenu::item {
+    color: #2D3748;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+QMenu#taskContextMenu::item:selected {
+    background-color: #D8DAE2;
+}
+
+/* ── 分隔线（新拟态风格）─────────────────────────── */
+QFrame[frameShape="4"] {  /* HLine */
+    background: #D8DAE2;
+    max-height: 1px;
+    border: none;
+}
+
+/* ── 任务容器背景 ─────────────────────────────────── */
+QWidget#taskContainer {
+    background: transparent;
+}
