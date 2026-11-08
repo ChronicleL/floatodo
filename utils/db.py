@@ -1,10 +1,17 @@
 """SQLite 数据库连接管理（单例，WAL 模式）"""
+import sys
 import sqlite3
 import os
 from pathlib import Path
 
 _conn: sqlite3.Connection | None = None
-DB_PATH = Path(__file__).parent.parent / "data" / "tasks.db"
+
+if getattr(sys, "frozen", False):
+    APP_ROOT = Path(sys.executable).parent
+else:
+    APP_ROOT = Path(__file__).parent.parent
+
+DB_PATH = APP_ROOT / "data" / "tasks.db"
 
 
 def get_conn() -> sqlite3.Connection:

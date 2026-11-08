@@ -67,5 +67,5 @@ class PomodoroSession:
             PomodoroPhase.WORK: self.work_duration,
             PomodoroPhase.SHORT_BREAK: self.short_duration,
             PomodoroPhase.LONG_BREAK: self.long_duration,
-            PomodoroPhase.IDLE: 0,
+            PomodoroPhase.IDLE: self.work_duration,  # 就绪状态下默认显示单次专注时长
         }[self.phase]

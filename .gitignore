@@ -6,6 +6,10 @@ __pycache__/
 .Python
 *.egg-info/
 
+# PyInstaller 构建产物
+build/
+dist/
+
 # 运行时数据（本地 SQLite 和设置，不上传）
 data/tasks.db
 data/settings.json
