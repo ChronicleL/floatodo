@@ -149,8 +149,8 @@ class MainWindow(QMainWindow):
         self._mini_size = (148, 185)
         # 缩放参数：维持 374:660 长宽比，最小 1×，最大 2×
         self._aspect = 660 / 374        # ≈ 1.765
-        self._min_w = 374
-        self._max_w = 748
+        self._min_w = 187               # 默认尺寸的一半（374/2）
+        self._max_w = 748               # 默认尺寸的两倍（374×2）
 
         # 基础窗口属性
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowSystemMenuHint)

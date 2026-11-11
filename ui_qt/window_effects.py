@@ -55,26 +55,18 @@ def _set_accent(hwnd: int, state: int, color: int) -> None:
         print(f"[Effects] accent error: {e}")
 
 
-def enable_glass(hwnd: int, alpha: int = 215) -> None:
-    """启用毛玻璃：LWA_ALPHA 实现真实透明（桌面穿透）+ DWM 模糊帧。
-    alpha=215 → 窗口 84% 不透明，桌面可见 16%。"""
-    try:
-        ex = ctypes.windll.user32.GetWindowLongW(hwnd, _GWL_EXSTYLE)
-        ctypes.windll.user32.SetWindowLongW(hwnd, _GWL_EXSTYLE, ex | _WS_EX_LAYERED)
-        ctypes.windll.user32.SetLayeredWindowAttributes(hwnd, 0, int(alpha), _LWA_ALPHA)
-    except Exception as e:
-        print(f"[Effects] LWA_ALPHA error: {e}")
+def enable_glass(hwnd: int) -> None:
+    """启用毛玻璃 DWM 模糊帧。
+    Qt 窗口已设 WA_TranslucentBackground，内部用 UpdateLayeredWindowIndirect 管理。
+    SetLayeredWindowAttributes(LWA_ALPHA) 与 UpdateLayeredWindowIndirect 互斥，
+    绝不能调用，否则每帧都会报 UpdateLayeredWindowIndirect failed。
+    此处只调用 SetWindowCompositionAttribute 添加 DWM BlurBehind 效果。
+    实际透明度由 CSS 卡片背景的 rgba() 控制。"""
     _set_accent(hwnd, _ACCENT_ENABLE_BLURBEHIND, 0x01000000)
 
 
 def disable_glass(hwnd: int) -> None:
-    """关闭毛玻璃，恢复完全不透明。"""
-    try:
-        ex = ctypes.windll.user32.GetWindowLongW(hwnd, _GWL_EXSTYLE)
-        if ex & _WS_EX_LAYERED:
-            ctypes.windll.user32.SetLayeredWindowAttributes(hwnd, 0, 255, _LWA_ALPHA)
-    except Exception as e:
-        print(f"[Effects] restore error: {e}")
+    """关闭 DWM 模糊帧。"""
     _set_accent(hwnd, _ACCENT_DISABLED, 0)
 
 
