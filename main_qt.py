@@ -26,17 +26,25 @@ def main():
     window = MainWindow(cfg)
     window.show()
 
-    # 注册全局唤醒热键 (Ctrl+Shift+F)
-    try:
-        import keyboard
-        import threading
-        keyboard.add_hotkey(
-            "ctrl+shift+f",
-            lambda: window._toggle_window_visibility(),
-            suppress=False
-        )
-    except Exception as e:
-        print(f"[FloaTodo] Hotkey register info: {e}")
+    # 热键注册放到后台线程，避免主线程阻塞导致 app.exec() 迟迟不启动
+    # 回调用 Qt 信号槽方式保证线程安全
+    def _register_hotkey():
+        try:
+            import keyboard
+            from PySide6.QtCore import QMetaObject, Qt as _Qt
+            keyboard.add_hotkey(
+                "ctrl+shift+f",
+                lambda: QMetaObject.invokeMethod(
+                    window, "_toggle_window_visibility",
+                    _Qt.ConnectionType.QueuedConnection
+                ),
+                suppress=False
+            )
+        except Exception as e:
+            print(f"[FloaTodo] Hotkey register info: {e}")
+
+    import threading
+    threading.Thread(target=_register_hotkey, daemon=True).start()
 
     sys.exit(app.exec())
 
