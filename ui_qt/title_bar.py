@@ -16,6 +16,7 @@ from ui_qt.controls import PinButton
 class TitleBar(QWidget):
     pin_toggled = Signal(bool)
     mini_clicked = Signal()
+    frost_clicked = Signal()      # 毛玻璃皮肤切换
     minimize_clicked = Signal()
     close_clicked = Signal()
 
@@ -78,6 +79,13 @@ class TitleBar(QWidget):
         self.btn_mini.clicked.connect(self.mini_clicked.emit)
         self.layout.addWidget(self.btn_mini)
 
+        # 2b. 毛玻璃皮肤按钮（统一 26×26）
+        self.btn_frost = QPushButton("❄")
+        self.btn_frost.setToolTip("切换毛玻璃皮肤")
+        self.btn_frost.setStyleSheet(btn_style)
+        self.btn_frost.clicked.connect(self.frost_clicked.emit)
+        self.layout.addWidget(self.btn_frost)
+
         # 3. 最小化按钮（统一 26×26）
         self.btn_minimize = QPushButton("—")
         self.btn_minimize.setToolTip("最小化到任务栏")
@@ -101,6 +109,31 @@ class TitleBar(QWidget):
     def set_stage_text(self, text: str):
         self.title_label.setText(text)
 
+    def set_frost_active(self, active: bool) -> None:
+        """更新毛玻璃按钮的激活样式。"""
+        if active:
+            self.btn_frost.setStyleSheet(self.btn_frost.styleSheet() + f"""
+                QPushButton {{ color: #5E9FF2; }}
+            """)
+        else:
+            # 还原为默认样式（重新 apply btn_style）
+            btn_style = f"""
+                QPushButton {{
+                    background-color: transparent;
+                    color: {TEXT_MUTED_HEX};
+                    border-radius: 6px;
+                    font-size: 13px;
+                    min-width: 26px; max-width: 26px;
+                    min-height: 26px; max-height: 26px;
+                    padding: 0px;
+                }}
+                QPushButton:hover {{
+                    background-color: {BG_PRESSED_HEX};
+                    color: {TEXT_PRI_HEX};
+                }}
+            """
+            self.btn_frost.setStyleSheet(btn_style)
+
     def set_mini_mode(self, is_mini: bool):
         self._is_mini = is_mini
         if is_mini:
@@ -109,6 +142,7 @@ class TitleBar(QWidget):
             self.ico_label.hide()
             self.title_label.hide()
             self.btn_pin.hide()
+            self.btn_frost.hide()
             self.btn_minimize.hide()
             self.layout.setContentsMargins(6, 0, 6, 0)
         else:
@@ -117,6 +151,7 @@ class TitleBar(QWidget):
             self.ico_label.show()
             self.title_label.show()
             self.btn_pin.show()
+            self.btn_frost.show()
             self.btn_minimize.show()
             self.layout.setContentsMargins(12, 0, 8, 0)
 

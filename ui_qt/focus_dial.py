@@ -37,6 +37,7 @@ class FocusDial(QWidget):
         self._ripple_timer.timeout.connect(self._step_ripple)
 
         self._tick_count = 30             # 30 个刻度，通透简洁
+        self._clock_text = ""             # 迷你+IDLE 状态显示的实时时钟 HH:MM
         self.setCursor(Qt.PointingHandCursor)
 
     def set_phase(self, phase: str, total_seconds: int):
@@ -53,6 +54,13 @@ class FocusDial(QWidget):
     def set_running(self, running: bool):
         self._is_running = running
         self.update()
+
+    def set_clock_text(self, text: str) -> None:
+        """设置实时时钟文字（IDLE 状态时在表盘中心显示 HH:MM）。"""
+        if self._clock_text != text:
+            self._clock_text = text
+            if self._phase == "idle":
+                self.update()
 
     def trigger_completion_ripple(self):
         """阶段完成时触发向外扩散的发光水波纹动效"""
@@ -175,11 +183,15 @@ class FocusDial(QWidget):
             painter.drawRoundedRect(QRectF(-pill_w / 2, -pill_h / 2, pill_w, pill_h), pill_h / 2, pill_h / 2)
             painter.restore()
 
-        # 5. 中心倒计时显示（纯净聚焦，统一采用 MM:SS 格式如 25:00，绝不超出圆环边界）
+        # 5. 中心倒计时显示（IDLE 时显示实时时钟，运行时显示 MM:SS）
         painter.setPen(COLOR_TEXT_PRI)
-        m = self._remaining_seconds // 60
-        s = self._remaining_seconds % 60
-        main_text = f"{m:02d}:{s:02d}"
+        if self._phase == "idle" and self._clock_text:
+            # IDLE 状态：显示实时时钟（HH:MM），用稍小字体区分
+            main_text = self._clock_text
+        else:
+            m = self._remaining_seconds // 60
+            s = self._remaining_seconds % 60
+            main_text = f"{m:02d}:{s:02d}"
 
         # 自适应字体大小，确保不会超出中心圈
         font_size = max(13, int(radius * 0.30))
