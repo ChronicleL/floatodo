@@ -58,10 +58,17 @@ def run_webview():
 
 
 def main():
+    # 只用 PySide6 是否可导入来决定路径，不捕获 run_qt() 内部错误
+    _qt_ok = False
     try:
         import PySide6
-        run_qt()
+        _qt_ok = True
     except ImportError:
+        pass
+
+    if _qt_ok:
+        run_qt()   # 任何内部错误都正常抛出，不会默默 fallback
+    else:
         print("[FloaTodo] PySide6 未安装，自动降级至 pywebview 模式...")
         run_webview()
 
