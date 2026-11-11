@@ -6,6 +6,25 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# ── conda 环境 DLL 路径修复 ──────────────────────────────────────────
+# conda 编译的 PySide6 依赖 <conda_root>/Library/bin 里的 Qt DLL。
+# IDE / 双击启动时 conda activate 未运行，需手动加入搜索路径。
+def _ensure_conda_dll_path() -> None:
+    conda_root = os.path.dirname(sys.executable)   # e.g. D:\Anaconda
+    lib_bin = os.path.join(conda_root, "Library", "bin")
+    if os.path.isdir(lib_bin):
+        # add_dll_directory（Python 3.8+）：比 PATH 更可靠的 DLL 搜索路径
+        try:
+            os.add_dll_directory(lib_bin)
+        except Exception:
+            pass
+        # 同时更新 PATH，保证 Qt 插件/平台驱动能找到依赖
+        current = os.environ.get("PATH", "")
+        if lib_bin.lower() not in current.lower():
+            os.environ["PATH"] = lib_bin + os.pathsep + current
+
+_ensure_conda_dll_path()
+
 
 def run_qt():
     from main_qt import main as qt_main
