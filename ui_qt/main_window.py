@@ -6,12 +6,12 @@ FloaTodo — 原生 Neumorphic 主窗体
 import sys
 from pathlib import Path
 from datetime import datetime
-from PySide6.QtCore import Qt, QTimer, QPoint
+from PySide6.QtCore import Qt, QTimer, QPoint, QObject, QEvent
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QFrame, QSystemTrayIcon, QMenu, QApplication
 )
-from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QAction
+from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QAction, QMouseEvent, QCursor
 
 from core.pomodoro import PomodoroCore
 from core.task_manager import TaskManager
@@ -32,6 +32,73 @@ from ui_qt.sound_manager import get_sound_manager
 from ui_qt.window_effects import enable_glass, disable_glass
 
 WEEKDAY_ZH = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+
+# ── 边缘拖拽缩放（纯 Qt 实现，无 Win32 ctypes）────────────────────────
+# 通过应用级事件过滤器检测窗口边缘，调用 QWindow.startSystemResize()
+# 由操作系统原生处理拖拽，自动遵守 setMinimumSize / setMaximumSize 约束
+_RESIZE_BORDER = 7  # px
+
+_EDGE_CURSORS = {
+    Qt.Edge.LeftEdge:                                   Qt.CursorShape.SizeHorCursor,
+    Qt.Edge.RightEdge:                                  Qt.CursorShape.SizeHorCursor,
+    Qt.Edge.TopEdge:                                    Qt.CursorShape.SizeVerCursor,
+    Qt.Edge.BottomEdge:                                 Qt.CursorShape.SizeVerCursor,
+    Qt.Edge.LeftEdge  | Qt.Edge.TopEdge:                Qt.CursorShape.SizeFDiagCursor,
+    Qt.Edge.RightEdge | Qt.Edge.BottomEdge:             Qt.CursorShape.SizeFDiagCursor,
+    Qt.Edge.RightEdge | Qt.Edge.TopEdge:                Qt.CursorShape.SizeBDiagCursor,
+    Qt.Edge.LeftEdge  | Qt.Edge.BottomEdge:             Qt.CursorShape.SizeBDiagCursor,
+}
+
+
+class _ResizeFilter(QObject):
+    """应用级事件过滤器：在窗口边缘实现拖拽缩放。
+    通过 QWindow.startSystemResize() 委托 OS 执行原生缩放，
+    无需 ctypes 转换 Win32 消息结构，不干扰 Qt 鼠标事件路由。"""
+
+    def __init__(self, win: "MainWindow"):
+        super().__init__(win)
+        self._win = win
+        self._cursor_overridden = False
+
+    def _edges_at(self, gpos: QPoint) -> Qt.Edge:
+        if self._win._is_mini:
+            return Qt.Edge(0)
+        r = self._win.frameGeometry()
+        lx = gpos.x() - r.x()
+        ly = gpos.y() - r.y()
+        w, h = r.width(), r.height()
+        b = _RESIZE_BORDER
+        e = Qt.Edge(0)
+        if lx < b:     e |= Qt.Edge.LeftEdge
+        if lx > w - b: e |= Qt.Edge.RightEdge
+        if ly < b:     e |= Qt.Edge.TopEdge
+        if ly > h - b: e |= Qt.Edge.BottomEdge
+        return e
+
+    def eventFilter(self, obj, event) -> bool:
+        if not isinstance(event, QMouseEvent):
+            return False
+
+        gpos = event.globalPosition().toPoint()
+        edges = self._edges_at(gpos)
+
+        if event.type() == QEvent.Type.MouseButtonPress:
+            if event.button() == Qt.MouseButton.LeftButton and edges:
+                handle = self._win.windowHandle()
+                if handle:
+                    handle.startSystemResize(edges)
+                return True   # 吃掉此事件，交给 OS 处理
+
+        elif event.type() == QEvent.Type.MouseMove:
+            if edges:
+                cursor = _EDGE_CURSORS.get(edges, Qt.CursorShape.SizeAllCursor)
+                QApplication.setOverrideCursor(cursor)
+                self._cursor_overridden = True
+            elif self._cursor_overridden:
+                QApplication.restoreOverrideCursor()
+                self._cursor_overridden = False
+
+        return False
 
 
 def make_app_icon() -> QIcon:
@@ -100,6 +167,10 @@ class MainWindow(QMainWindow):
         self._connect_signals()
         self._init_timer()
         self._restore_position()
+
+        # 安装应用级边缘缩放过滤器（纯 Qt，不干扰鼠标事件路由）
+        self._resize_filter = _ResizeFilter(self)
+        QApplication.instance().installEventFilter(self._resize_filter)
 
     def _init_ui(self):
         self.root_widget = QWidget(self)
@@ -187,8 +258,9 @@ class MainWindow(QMainWindow):
 
         self.root_layout.addWidget(self.card)
 
-        # 固定宽度（边缘缩放功能待后续用 Qt 原生方式重新实现）
-        self.setFixedWidth(self._normal_size[0])
+        # 允许拖拽缩放（由 _ResizeFilter + startSystemResize 实现）
+        self.setMinimumSize(self._min_w, int(self._min_w * self._aspect))
+        self.setMaximumSize(self._max_w, int(self._max_w * self._aspect))
         self.resize(*self._normal_size)
 
     def _update_play_btn_style(self, running: bool):
@@ -550,12 +622,20 @@ class MainWindow(QMainWindow):
                 }}
             """)
 
+            # 先解除迷你模式的 setFixedSize 锁定，再设正常约束
+            # （setFixedSize 会把 min=max 锁死，必须先解除，否则 resize 无效）
+            self.dial.setMinimumSize(0, 0)
+            self.dial.setMaximumSize(16777215, 16777215)
             self.dial.setMinimumSize(180, 180)
             self.dial.setMaximumSize(320, 320)
             self.dial.resize(240, 240)
             self.btn_play.setFixedSize(52, 52)
 
-            self.setFixedWidth(self._normal_size[0])
+            # 窗口同理：先解除 min/max 锁，再设正常范围
+            self.setMinimumSize(0, 0)
+            self.setMaximumSize(16777215, 16777215)
+            self.setMinimumSize(self._min_w, int(self._min_w * self._aspect))
+            self.setMaximumSize(self._max_w, int(self._max_w * self._aspect))
             self.resize(*self._normal_size)
 
     # ── 毛玻璃皮肤 ─────────────────────────────────────────────────────
