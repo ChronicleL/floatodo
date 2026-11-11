@@ -29,12 +29,7 @@ from ui_qt.task_widget import TaskListView
 from ui_qt.controls import RoundIconButton, IconType
 from ui_qt.settings_dialog import SettingsDialog
 from ui_qt.sound_manager import get_sound_manager
-from ui_qt.window_effects import (
-    enable_glass, disable_glass,
-    hit_test_edges, constrain_sizing_rect,
-    WMSZ_LEFT, WMSZ_RIGHT, WMSZ_TOP, WMSZ_TOPLEFT, WMSZ_TOPRIGHT,
-    WMSZ_BOTTOM, WMSZ_BOTTOMLEFT, WMSZ_BOTTOMRIGHT,
-)
+from ui_qt.window_effects import enable_glass, disable_glass
 
 WEEKDAY_ZH = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
@@ -192,9 +187,8 @@ class MainWindow(QMainWindow):
 
         self.root_layout.addWidget(self.card)
 
-        # 允许拖拽缩放：设置 min/max，解除固定宽度
-        self.setMinimumSize(self._min_w, int(self._min_w * self._aspect))
-        self.setMaximumSize(self._max_w, int(self._max_w * self._aspect))
+        # 固定宽度（边缘缩放功能待后续用 Qt 原生方式重新实现）
+        self.setFixedWidth(self._normal_size[0])
         self.resize(*self._normal_size)
 
     def _update_play_btn_style(self, running: bool):
@@ -276,10 +270,12 @@ class MainWindow(QMainWindow):
     def _on_heartbeat(self):
         self.pomodoro.on_tick()
         self.task_timer.on_tick()
-        # 每秒推送实时时钟给表盘（IDLE 时显示 HH:MM）
-        from datetime import datetime
-        now = datetime.now()
-        self.dial.set_clock_text(now.strftime("%H:%M"))
+        # 迷你模式 + IDLE 时，表盘中心显示实时时钟（HH:MM）
+        if self._is_mini and self.pomodoro.phase.value == "idle":
+            from datetime import datetime
+            self.dial.set_clock_text(datetime.now().strftime("%H:%M"))
+        else:
+            self.dial.set_clock_text("")   # 非迷你或有番茄在跑时不显示时钟
 
     # ── 番茄钟控制 ─────────────────────────────────────────────────────
     def _toggle_pomodoro(self):
@@ -559,8 +555,7 @@ class MainWindow(QMainWindow):
             self.dial.resize(240, 240)
             self.btn_play.setFixedSize(52, 52)
 
-            self.setMinimumSize(self._min_w, int(self._min_w * self._aspect))
-            self.setMaximumSize(self._max_w, int(self._max_w * self._aspect))
+            self.setFixedWidth(self._normal_size[0])
             self.resize(*self._normal_size)
 
     # ── 毛玻璃皮肤 ─────────────────────────────────────────────────────
@@ -587,65 +582,6 @@ class MainWindow(QMainWindow):
                 }}
             """)
         self.title_bar.set_frost_active(self._glass_on)
-
-    # ── 边缘拖拽缩放（Win32 WM_NCHITTEST + WM_SIZING）─────────────────
-    def nativeEvent(self, event_type, message):
-        if event_type == b"windows_generic_MSG":
-            try:
-                import ctypes
-                import ctypes.wintypes as _wt
-                from PySide6.QtCore import QPoint
-
-                class _MSG(ctypes.Structure):
-                    _fields_ = [
-                        ("hwnd",    _wt.HWND),
-                        ("message", _wt.UINT),
-                        ("wParam",  _wt.WPARAM),
-                        ("lParam",  _wt.LPARAM),
-                        ("time",    _wt.DWORD),
-                        ("pt",      _wt.POINT),
-                    ]
-                msg = ctypes.cast(int(message), ctypes.POINTER(_MSG)).contents
-
-                # WM_NCHITTEST — 鼠标在哪个区域
-                if msg.message == 0x0084 and not self._is_mini:
-                    x = ctypes.c_short(msg.lParam & 0xFFFF).value
-                    y = ctypes.c_short((msg.lParam >> 16) & 0xFFFF).value
-                    pos = self.mapFromGlobal(QPoint(x, y))
-                    # 标题栏区域不干涉（由 TitleBar 自己处理拖拽）
-                    tb_h = self.title_bar.height() if self.title_bar else 42
-                    if pos.y() >= tb_h:
-                        ht = hit_test_edges(pos.x(), pos.y(), self.width(), self.height())
-                        if ht is not None:
-                            return True, ht
-
-                # WM_SIZING — 维持长宽比
-                elif msg.message == 0x0214 and not self._is_mini:
-                    import ctypes.wintypes
-                    class RECT(ctypes.Structure):
-                        _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long),
-                                    ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
-                    rect_ptr = ctypes.cast(msg.lParam, ctypes.POINTER(RECT))
-                    dpr = self.screen().devicePixelRatio() if self.screen() else 1.0
-                    constrain_sizing_rect(
-                        msg.wParam, rect_ptr, self._aspect,
-                        self._min_w, self._max_w, dpr
-                    )
-                    return True, 1
-
-            except Exception:
-                pass
-        return super().nativeEvent(event_type, message)
-
-    def resizeEvent(self, event):
-        """窗口缩放时，表盘和内容随比例自适应。"""
-        super().resizeEvent(event)
-        if not self._is_mini:
-            new_w = self.width()
-            # 表盘尺寸：窗口宽的 ~64%，限制在 180–320px
-            dial_size = max(180, min(320, int(new_w * 0.64)))
-            self.dial.setMinimumSize(dial_size, dial_size)
-            self.dial.setMaximumSize(dial_size, dial_size)
 
     def _toggle_window_visibility(self):
         if self.isVisible():
