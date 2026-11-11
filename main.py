@@ -10,15 +10,18 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # conda 编译的 PySide6 依赖 <conda_root>/Library/bin 里的 Qt DLL。
 # IDE / 双击启动时 conda activate 未运行，需手动加入搜索路径。
 def _ensure_conda_dll_path() -> None:
-    conda_root = os.path.dirname(sys.executable)   # e.g. D:\Anaconda
-    lib_bin = os.path.join(conda_root, "Library", "bin")
+    # 仅在 conda 直接环境（非 venv）下注入 Library/bin。
+    # venv 使用 pip 自带的 Qt DLL，注入 conda Library/bin 会引发 VC++ 版本冲突。
+    in_venv = sys.prefix != sys.base_prefix
+    if in_venv:
+        return
+
+    lib_bin = os.path.join(sys.base_prefix, "Library", "bin")
     if os.path.isdir(lib_bin):
-        # add_dll_directory（Python 3.8+）：比 PATH 更可靠的 DLL 搜索路径
         try:
-            os.add_dll_directory(lib_bin)
+            os.add_dll_directory(lib_bin)   # Python 3.8+ 可信 DLL 目录
         except Exception:
             pass
-        # 同时更新 PATH，保证 Qt 插件/平台驱动能找到依赖
         current = os.environ.get("PATH", "")
         if lib_bin.lower() not in current.lower():
             os.environ["PATH"] = lib_bin + os.pathsep + current
