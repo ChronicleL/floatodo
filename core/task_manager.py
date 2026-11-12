@@ -125,6 +125,23 @@ class TaskManager:
         conn.execute("UPDATE tasks SET pomodoro_count=? WHERE id=?", (task.pomodoro_count, task_id))
         conn.commit()
 
+    def update_title(self, task_id: int, new_title: str) -> None:
+        task = self._find(task_id)
+        if task is None or not new_title:
+            return
+        task.title = new_title
+        conn = get_conn()
+        conn.execute("UPDATE tasks SET title=? WHERE id=?", (new_title, task_id))
+        conn.commit()
+
+    def reorder_tasks(self, ordered_ids: list) -> None:
+        id_to_task = {t.id: t for t in self._tasks}
+        self._tasks = [id_to_task[tid] for tid in ordered_ids if tid in id_to_task]
+        conn = get_conn()
+        for idx, task_id in enumerate(ordered_ids):
+            conn.execute("UPDATE tasks SET sort_order=? WHERE id=?", (idx, task_id))
+        conn.commit()
+
     def _find(self, task_id: int) -> Optional[Task]:
         for t in self._tasks:
             if t.id == task_id:

@@ -325,6 +325,8 @@ class MainWindow(QMainWindow):
         self.task_list_view.task_completed.connect(self._complete_task)
         self.task_list_view.task_timer_toggled.connect(self._toggle_task_timer)
         self.task_list_view.task_deleted.connect(self._delete_task)
+        self.task_list_view.task_reordered.connect(self._reorder_tasks)
+        self.task_list_view.task_edited.connect(self._edit_task)
 
         self.task_timer.elapsed_updated.connect(self.task_list_view.update_task_elapsed)
 
@@ -557,6 +559,12 @@ class MainWindow(QMainWindow):
     def _delete_task(self, task_id: int):
         self.task_mgr.delete_task(task_id)
         self.task_list_view._update_header_stats(self.task_mgr.tasks)
+
+    def _reorder_tasks(self, ordered_ids: list):
+        self.task_mgr.reorder_tasks(ordered_ids)
+
+    def _edit_task(self, task_id: int, new_title: str):
+        self.task_mgr.update_title(task_id, new_title)
 
     def _toggle_task_timer(self, task_id: int):
         if self.task_timer.active_task_id == task_id:
