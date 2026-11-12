@@ -344,12 +344,6 @@ class MainWindow(QMainWindow):
     def _on_heartbeat(self):
         self.pomodoro.on_tick()
         self.task_timer.on_tick()
-        # 迷你模式 + IDLE 时，表盘中心显示实时时钟（HH:MM）
-        if self._is_mini and self.pomodoro.phase.value == "idle":
-            from datetime import datetime
-            self.dial.set_clock_text(datetime.now().strftime("%H:%M"))
-        else:
-            self.dial.set_clock_text("")   # 非迷你或有番茄在跑时不显示时钟
 
     # ── 番茄钟控制 ─────────────────────────────────────────────────────
     def _toggle_pomodoro(self):
@@ -601,22 +595,13 @@ class MainWindow(QMainWindow):
 
             self.root_layout.setContentsMargins(0, 0, 0, 0)
             self.card_layout.setContentsMargins(0, 0, 0, 4)
-            self.card.setStyleSheet(f"""
-                QFrame#mainCard {{
-                    background-color: {BG_HEX};
-                    border-radius: 14px;
-                    border: 1px solid rgba(174, 174, 192, 0.42);
-                }}
-            """)
+            self._apply_card_style()
 
             self.dial.setFixedSize(110, 110)
             self.btn_play.setFixedSize(36, 36)
 
             self.setFixedSize(self._mini_size[0], self._mini_size[1])
         else:
-            # 立即清除时钟文字，防止恢复过程中的重绘残留系统时间
-            self.dial.set_clock_text("")
-
             self.btn_skip.show()
             self.btn_more.show()
             self.label_next_stage.show()
@@ -625,13 +610,7 @@ class MainWindow(QMainWindow):
 
             self.root_layout.setContentsMargins(0, 0, 0, 0)
             self.card_layout.setContentsMargins(0, 0, 0, 8)
-            self.card.setStyleSheet(f"""
-                QFrame#mainCard {{
-                    background-color: {BG_HEX};
-                    border-radius: 18px;
-                    border: 1px solid rgba(174, 174, 192, 0.42);
-                }}
-            """)
+            self._apply_card_style()
 
             # 先解除迷你模式的 setFixedSize 锁定，再设正常约束
             # （setFixedSize 会把 min=max 锁死，必须先解除，否则 resize 无效）
@@ -649,29 +628,35 @@ class MainWindow(QMainWindow):
             self.setMaximumSize(self._max_w, int(self._max_w * self._aspect))
             self.resize(*self._normal_size)
 
+    # ── 卡片样式统一入口（glass × mini 两个维度）────────────────────────
+    def _apply_card_style(self) -> None:
+        radius = "14px" if self._is_mini else "18px"
+        if self._glass_on:
+            self.card.setStyleSheet(f"""
+                QFrame#mainCard {{
+                    background-color: rgba(235, 240, 255, 145);
+                    border-radius: {radius};
+                    border: 1px solid rgba(255, 255, 255, 180);
+                }}
+            """)
+        else:
+            self.card.setStyleSheet(f"""
+                QFrame#mainCard {{
+                    background-color: {BG_HEX};
+                    border-radius: {radius};
+                    border: 1px solid rgba(174, 174, 192, 0.42);
+                }}
+            """)
+
     # ── 毛玻璃皮肤 ─────────────────────────────────────────────────────
     def _toggle_glass(self):
         self._glass_on = not self._glass_on
         hwnd = int(self.winId())
         if self._glass_on:
             enable_glass(hwnd)
-            # 卡片改为半透明玻璃样式
-            self.card.setStyleSheet("""
-                QFrame#mainCard {
-                    background-color: rgba(235, 240, 255, 145);
-                    border-radius: 18px;
-                    border: 1px solid rgba(255, 255, 255, 180);
-                }
-            """)
         else:
             disable_glass(hwnd)
-            self.card.setStyleSheet(f"""
-                QFrame#mainCard {{
-                    background-color: {BG_HEX};
-                    border-radius: 18px;
-                    border: 1px solid rgba(174, 174, 192, 0.42);
-                }}
-            """)
+        self._apply_card_style()
         self.title_bar.set_frost_active(self._glass_on)
 
     def _toggle_window_visibility(self):
