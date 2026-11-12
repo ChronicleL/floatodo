@@ -614,6 +614,9 @@ class MainWindow(QMainWindow):
 
             self.setFixedSize(self._mini_size[0], self._mini_size[1])
         else:
+            # 立即清除时钟文字，防止恢复过程中的重绘残留系统时间
+            self.dial.set_clock_text("")
+
             self.btn_skip.show()
             self.btn_more.show()
             self.label_next_stage.show()

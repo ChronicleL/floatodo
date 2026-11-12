@@ -1,5 +1,3 @@
 PySide6>=6.5.0
 keyboard>=0.13.5
 pywin32>=306
-pywebview>=6.2.0
-winotify>=1.1.0

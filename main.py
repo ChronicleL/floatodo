@@ -1,6 +1,4 @@
-"""FloaTodo — 应用主入口
-默认启动原生 PySide6 界面（融合 Windows 专注风格表盘、原生抗锯齿渲染与无延迟拖动）。
-"""
+"""FloaTodo — 应用主入口（PySide6 原生 UI）"""
 import sys
 import os
 
@@ -10,16 +8,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # conda 编译的 PySide6 依赖 <conda_root>/Library/bin 里的 Qt DLL。
 # IDE / 双击启动时 conda activate 未运行，需手动加入搜索路径。
 def _ensure_conda_dll_path() -> None:
-    # 仅在 conda 直接环境（非 venv）下注入 Library/bin。
-    # venv 使用 pip 自带的 Qt DLL，注入 conda Library/bin 会引发 VC++ 版本冲突。
+    # 仅在 conda 直接环境（非 venv）下注入 Library/bin
     in_venv = sys.prefix != sys.base_prefix
     if in_venv:
         return
-
     lib_bin = os.path.join(sys.base_prefix, "Library", "bin")
     if os.path.isdir(lib_bin):
         try:
-            os.add_dll_directory(lib_bin)   # Python 3.8+ 可信 DLL 目录
+            os.add_dll_directory(lib_bin)
         except Exception:
             pass
         current = os.environ.get("PATH", "")
@@ -29,70 +25,9 @@ def _ensure_conda_dll_path() -> None:
 _ensure_conda_dll_path()
 
 
-def run_qt():
+def main():
     from main_qt import main as qt_main
     qt_main()
-
-
-def run_webview():
-    from pathlib import Path
-    import webview
-    from core.clock import ClockCore
-    from core.pomodoro import PomodoroCore
-    from core.task_manager import TaskManager
-    from core.task_timer import TaskTimer
-    from api import FloaTodoAPI
-    import config.settings as settings_mod
-
-    cfg = settings_mod.load()
-    clock = ClockCore()
-    pomodoro = PomodoroCore()
-    manager = TaskManager()
-    timer = TaskTimer()
-
-    pomodoro.configure(
-        work=cfg.get("pomodoro_work", 25),
-        short=cfg.get("pomodoro_short", 5),
-        long=cfg.get("pomodoro_long", 15),
-        long_every=cfg.get("pomodoro_long_every", 4),
-    )
-
-    api = FloaTodoAPI(clock, pomodoro, manager, timer, cfg)
-    cmd_port = api.start_cmd_server()
-    print(f"[FloaTodo] Webview CMD server on port {cmd_port}")
-
-    html_path = Path(__file__).parent / "ui" / "index.html"
-    window = webview.create_window(
-        title="FloaTodo",
-        url=str(html_path),
-        js_api=api,
-        width=320,
-        height=640,
-        resizable=False,
-        frameless=True,
-        on_top=True,
-        background_color="#E8EAF0",
-    )
-    api.set_window(window)
-    window.events.loaded += lambda: api.on_page_loaded()
-    window.events.closed += lambda: os._exit(0)
-    webview.start(func=api.on_shown, debug=False, http_server=True)
-
-
-def main():
-    # 只用 PySide6 是否可导入来决定路径，不捕获 run_qt() 内部错误
-    _qt_ok = False
-    try:
-        import PySide6
-        _qt_ok = True
-    except ImportError:
-        pass
-
-    if _qt_ok:
-        run_qt()   # 任何内部错误都正常抛出，不会默默 fallback
-    else:
-        print("[FloaTodo] PySide6 未安装，自动降级至 pywebview 模式...")
-        run_webview()
 
 
 if __name__ == "__main__":
