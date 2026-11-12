@@ -119,6 +119,25 @@ python main.py
 python build_exe.py
 ```
 
+打包脚本会自动生成 `FloaTodo.spec` 并调用 PyInstaller。  
+默认已排除所有未使用的 Qt 子模块（WebEngine、QML、Qt3D、SVG 等 20+ 个），仅保留 UI 必需的核心模块。
+
+#### EXE 大小说明
+
+| 条件 | 大小 | 说明 |
+|------|------|------|
+| 无 UPX 压缩 | ~44 MB | PyInstaller 默认输出 |
+| 有 UPX 压缩 | **~25 MB** | 推荐，大幅降低体积 |
+
+最大占用来自 Qt 的 ICU 国际化数据文件（`icudt73.dll` 30 MB）——这是 Qt 文字渲染必须的 Unicode 表，无法裁剪，  
+但 UPX 对该文件压缩率极高（~65%），安装 UPX 后效果最明显。
+
+#### 安装 UPX（可选，推荐）
+
+从 [upx/upx Releases](https://github.com/upx/upx/releases) 下载 `upx-x.x.x-win64.zip`，  
+将其中的 `upx.exe` 放到 Python 环境的 `bin` 目录（如 `D:\Anaconda\Library\bin\`），  
+然后重新运行 `python build_exe.py` 即可自动启用压缩。
+
 ---
 
 ## 关键设计说明
