@@ -1,4 +1,4 @@
-"""任务计时器（tkinter 版）：毫秒精度，支持暂停/恢复"""
+"""任务秒表计时器：心跳驱动，支持暂停/恢复与累计计时"""
 from __future__ import annotations
 from datetime import datetime
 from typing import Optional

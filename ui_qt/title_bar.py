@@ -110,29 +110,23 @@ class TitleBar(QWidget):
         self.title_label.setText(text)
 
     def set_frost_active(self, active: bool) -> None:
-        """更新毛玻璃按钮的激活样式。"""
-        if active:
-            self.btn_frost.setStyleSheet(self.btn_frost.styleSheet() + f"""
-                QPushButton {{ color: #5E9FF2; }}
-            """)
-        else:
-            # 还原为默认样式（重新 apply btn_style）
-            btn_style = f"""
-                QPushButton {{
-                    background-color: transparent;
-                    color: {TEXT_MUTED_HEX};
-                    border-radius: 6px;
-                    font-size: 13px;
-                    min-width: 26px; max-width: 26px;
-                    min-height: 26px; max-height: 26px;
-                    padding: 0px;
-                }}
-                QPushButton:hover {{
-                    background-color: {BG_PRESSED_HEX};
-                    color: {TEXT_PRI_HEX};
-                }}
-            """
-            self.btn_frost.setStyleSheet(btn_style)
+        """更新毛玻璃按钮的激活样式（每次覆盖完整 QSS，避免叠加污染）。"""
+        icon_color = "#5E9FF2" if active else TEXT_MUTED_HEX
+        self.btn_frost.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {icon_color};
+                border-radius: 6px;
+                font-size: 13px;
+                min-width: 26px; max-width: 26px;
+                min-height: 26px; max-height: 26px;
+                padding: 0px;
+            }}
+            QPushButton:hover {{
+                background-color: {BG_PRESSED_HEX};
+                color: {TEXT_PRI_HEX};
+            }}
+        """)
 
     def set_mini_mode(self, is_mini: bool):
         self._is_mini = is_mini

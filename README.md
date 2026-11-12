@@ -1,49 +1,50 @@
 # FloaTodo 🍅
 
-> 悬浮窗口式待办清单 · Windows 桌面应用
+> Windows 悬浮窗口番茄钟 · 待办清单 · 原生 PySide6
 
 ---
 
 ## 项目概述
 
-一个始终置顶的轻量级浮动窗口应用，**将实时时钟与 Windows 11 风格的专注工作法融合为一体**，并集成待办清单、独立任务计时与趣味番茄收获管理。  
-采用 **新拟态（Neumorphism）** 浅色系设计风格，界面美观、动画流畅、低资源占用。
+始终置顶的轻量级浮动窗口应用，将 **Windows 专注风格表盘** 与 **待办清单** 融为一体。  
+采用 **新拟态（Neumorphism）** 浅色系设计，纯 Python + PySide6 原生渲染，零浏览器依赖，内存占用约 30 MB。
 
 ---
 
-## 技术方案
+## 技术栈
 
 | 层次 | 技术 | 说明 |
 |------|------|------|
-| **UI 核心引擎** | **PySide6 (Qt 6.8+) 原生驱动** | 硬件加速抗锯齿渲染，彻底告别浏览器外壳与本地 HTTP 转发，拖拽缩放零延迟，内存占用约 30MB |
-| **视觉风格** | **Neumorphism 新拟态 + Windows 专注表盘** | 30 刻度环形表盘 + 动态流光胶囊指示点，纯净居中大字 MM:SS 倒计时 |
-| **音效系统** | **QtMultimedia + Windows Audio** | 支持导入自定义音频（wav/mp3/m4a 等）与超时自动卡断机制 |
-| **备用引擎** | **pywebview + WebView2** | 在未安装 PySide6 的环境下自动降级启动 [`ui/index.html`](ui/index.html) |
-| **数据持久化** | **SQLite 3**（WAL 模式）+ JSON | 任务数据与偏好设置即时本地存储，重启自动继承 |
-| **系统深度集成** | **Win32 / Qt Tray / Global Hotkey** | 原生系统托盘常驻、无边框抗锯齿圆角、全局热键 `Ctrl+Shift+F` 唤醒 |
+| **UI 引擎** | PySide6 (Qt 6.5+) | 硬件加速抗锯齿渲染，拖拽/缩放零延迟 |
+| **视觉风格** | Neumorphism + Windows Focus Dial | 30 刻度环形表盘，动态流光胶囊进度点，MM:SS 居中大字 |
+| **音效系统** | winsound + QtMultimedia（可选） | 系统默认音 + 自定义音频导入，超时自动卡断 |
+| **数据持久化** | SQLite 3（WAL 模式）+ JSON | 任务数据与偏好设置即时本地存储，重启继承 |
+| **系统集成** | Win32 DWM · Qt Tray · keyboard | 毛玻璃 DWM 模糊、系统托盘常驻、全局热键 `Ctrl+Shift+F` |
 
 ---
 
 ## 功能清单
 
-### ✅ 已实现
-
-| 功能 | 说明 |
-|------|------|
-| **Windows 专注表盘** | 刻度环形表盘（Dial Ticks），中心呈现大号倒计时 MM:SS |
-| **偏好设置面板** | 支持自定义完整轮数（默认4轮）、专注时长（25m）、小休息（5m）、大休息（15m） |
-| **音效导入与超时卡断** | 支持导入自定义音频，可设置播放时间上限（1~15秒），超时自动卡断 |
-| **趣味番茄数勋章** | 每完成 4 轮大满贯自动收获 1 个大番茄（🍅 × n），支持持久化与一键清空 |
-| **阶段动态流转** | 专注 → 短休 → 专注 → 长休，支持自定义时长与状态推进 |
-| **任务增删与持久化** | SQLite WAL 模式，重启后数据无损保留 |
-| **任务完成动效** | 勾选/取消即时划线动画，自动更新 `TODAY (完成/总数)` |
-| **独立任务秒表计时** | 每个任务卡片均有独立 `⏱` 计时器，自动累计并在任务间切换 |
-| **右键操作菜单** | 右键任务卡片可直接删除 |
-| **窗口置顶与拖动** | 保持置顶（📌 带旋转动画），鼠标拖动标题栏即可无延迟移动窗口 |
-| **迷你模式（⊟）** | 一键切换至 148×190 极致紧凑悬浮挂件，工作时不遮挡屏幕 |
-| **系统托盘（Tray Icon）** | 任务栏通知区常驻 🍅 图标，点击切换窗口显隐，支持退出菜单 |
-| **全局热键召回** | `Ctrl+Shift+F` 随时召回或隐藏窗口 |
-| **新拟态视觉** | 双侧柔光高斯模糊阴影，支持半透明硬件阴影 |
+| 功能 | 交互方式 |
+|------|---------|
+| **环形专注表盘** | 30 刻度，中心 MM:SS 倒计时，完成时光环波纹动效 |
+| **番茄钟状态机** | IDLE → WORK → SHORT_BREAK → LONG_BREAK，支持跳过、重置 |
+| **大满贯番茄** | 完成 N 轮（默认 4）自动收获 🍅×1，持久化累计 |
+| **待办增删** | 顶部「＋ 添加」栏，输入回车即添加，自动更新 TODAY (n/m) |
+| **待办拖拽排序** | 拖住左侧 ⠿ 手柄上下拖拽，紫色指示线实时预览，松手持久化 |
+| **右键编辑任务** | 右键 → ✏️ 编辑任务名称，原地内联 QLineEdit，Enter 或失焦保存 |
+| **右键删除任务** | 右键 → 🗑 删除任务 |
+| **任务勾选完成** | 点击复选框，标题划线 + TODAY 计数实时更新 |
+| **任务独立秒表** | 每任务卡片 ⏱ 按钮，计时累计并持久化 |
+| **边缘拖拽缩放** | 窗口 8 方向边缘 7px 热区，系统原生缩放，遵守 min/max 约束 |
+| **迷你模式 ⊟** | 切换至 148×185 极简悬浮挂件，始终仅显示倒计时 |
+| **毛玻璃皮肤 ❄** | DWM BlurBehind + 半透明卡片，迷你/完整模式均生效 |
+| **偏好设置** | 自定义轮数、专注/短休/长休时长、音效开关与文件导入 |
+| **窗口置顶 📌** | 带旋转动效图钉，状态持久化 |
+| **窗口拖动** | 拖拽标题栏，位置保存至下次启动 |
+| **系统托盘** | 🍅 托盘图标，左键/双击显隐窗口 |
+| **全局热键** | `Ctrl+Shift+F` 随时召回/隐藏，后台线程注册，不阻塞 UI |
+| **阶段通知** | 系统 Tray 气泡 + 音效提示，可自定义音频 |
 
 ---
 
@@ -51,55 +52,100 @@
 
 ```
 floatodo/
-├── main.py              # 应用主入口（自动优先启动 PySide6，无依赖时降级 webview）
-├── main_qt.py           # 原生 PySide6 主程序入口
-├── requirements.txt     # 依赖声明
+├── main.py              # 应用主入口（conda DLL 路径修复 + 启动 PySide6）
+├── main_qt.py           # PySide6 主程序（QApplication 初始化、热键线程）
+├── requirements.txt     # 依赖：PySide6, keyboard, pywin32
+├── build_exe.py         # PyInstaller 打包脚本（生成独立便携 EXE）
+├── FloaTodo.spec        # PyInstaller Spec
+├── app.ico              # 应用图标
 │
-├── ui_qt/               # 原生 Qt UI 模块
-│   ├── focus_dial.py    # Windows 专注风格刻度表盘（QPainter 抗锯齿绘制）
-│   ├── task_widget.py   # 待办清单组件（任务卡片、秒表计时、添加栏）
-│   ├── title_bar.py     # 无边框拟态标题栏（置顶/迷你/关闭/拖拽）
-│   ├── controls.py      # 纯矢量拟态控制按钮与带旋转动画图钉
-│   ├── settings_dialog.py # 偏好设置面板（时长配置与音效导入）
-│   ├── sound_manager.py # 音频管理与超时自动卡断模块
-│   ├── main_window.py   # 主窗体容器（新拟态卡片投影、系统托盘、定时器调度）
-│   └── styles.py        # 新拟态配色系统与 QSS
+├── ui_qt/               # 原生 Qt UI 层
+│   ├── main_window.py   # 主窗体（布局、番茄调度、托盘、缩放过滤器）
+│   ├── focus_dial.py    # 专注表盘（QPainter 刻度环、波纹动效）
+│   ├── task_widget.py   # 任务列表（拖拽排序、内联编辑、条目组件）
+│   ├── title_bar.py     # 无边框标题栏（置顶、迷你、毛玻璃、拖动）
+│   ├── controls.py      # 矢量圆形按钮、图钉旋转动画
+│   ├── settings_dialog.py  # 偏好设置面板
+│   ├── sound_manager.py    # 音效管理（系统音 + 自定义文件 + 卡断）
+│   ├── window_effects.py   # Win32 DWM 毛玻璃（SetWindowCompositionAttribute）
+│   └── styles.py           # 新拟态配色系统与全局 QSS
 │
-├── core/                # 纯 Python 核心业务逻辑
-│   ├── pomodoro.py      # 番茄钟状态机（大满贯周期信号支持）
+├── core/                # 纯 Python 业务逻辑（无 Qt 依赖）
+│   ├── pomodoro.py      # 番茄钟状态机
 │   ├── task_manager.py  # 任务 CRUD（SQLite 驱动）
 │   ├── task_timer.py    # 任务秒表计时器
-│   ├── models.py        # 数据模型（Task, PomodoroPhase）
-│   └── signal.py        # 轻量观察者回调系统
+│   ├── models.py        # 数据模型（Task, PomodoroPhase, Priority）
+│   └── signal.py        # 轻量观察者 Signal（connect / emit）
 │
 ├── config/
-│   └── settings.py      # 配置读写（JSON 后端，记忆窗口位置与时长参数）
+│   └── settings.py      # JSON 配置读写，记忆窗口位置与偏好
 │
-└── utils/
-    └── db.py            # SQLite 连接单例（WAL 模式）
+├── utils/
+│   └── db.py            # SQLite 单例连接（WAL 模式）
+│
+├── data/                # 运行时数据（git-ignored）
+│   ├── tasks.db         # 任务数据库
+│   └── settings.json    # 用户配置
+│
+└── sound/               # 内置提示音样例
 ```
 
 ---
 
 ## 安装与运行
 
-### 1. 便携单文件 EXE 运行（推荐）
+### 方式一：便携 EXE（推荐）
 
-打包生成的独立便携可执行文件位于：
 ```
 dist/FloaTodo.exe
 ```
-无需安装 Python 环境，双击即可直接运行！配置文件与待办数据库会自动保存在同级 `data/` 目录下，便于随身携带。
 
-### 2. 源码运行
+无需 Python，双击即用。`data/` 目录与 EXE 同级，可随身携带。
+
+### 方式二：源码运行
 
 ```bash
-# 安装依赖
 pip install -r requirements.txt
-
-# 运行应用
 python main.py
+```
 
-# 重新构建 EXE
+> **conda 环境说明**：conda 编译的 PySide6 与 pip 安装的 Qt DLL 存在版本冲突。  
+> 推荐使用 `conda install pyside6`，然后直接 `python main.py`，  
+> 入口已内置 `Library/bin` DLL 路径自动修复（非 venv 环境下生效）。
+
+### 方式三：重新打包 EXE
+
+```bash
 python build_exe.py
+```
+
+---
+
+## 关键设计说明
+
+### 毛玻璃（❄）实现原理
+
+Qt 窗口设置 `WA_TranslucentBackground=True` 后，内部使用 `UpdateLayeredWindowIndirect` 管理透明。  
+`SetLayeredWindowAttributes(LWA_ALPHA)` 与前者**互斥**，调用后每帧都会报错。  
+本项目只调用 `SetWindowCompositionAttribute`（DWM BlurBehind），实际透明度由卡片 CSS `rgba()` 控制，三者互不干扰。
+
+### 边缘缩放实现原理
+
+通过应用级 `QObject.eventFilter` 检测鼠标在窗口边缘 7px 热区，  
+调用 `QWindow.startSystemResize()` 将缩放完全委托给操作系统，  
+无需 Win32 `WM_NCHITTEST` ctypes 结构，不干扰 Qt 内部鼠标事件路由。
+
+### 热键线程安全
+
+`keyboard.add_hotkey()` 在 `app.exec()` 之前调用会阻塞主线程。  
+本项目将热键注册放入 Daemon 线程，回调通过 `QMetaObject.invokeMethod(..., QueuedConnection)` 转发到主线程执行。
+
+---
+
+## 依赖
+
+```
+PySide6>=6.5.0    # Qt 原生 UI
+keyboard>=0.13.5  # 全局热键（需管理员权限或无障碍权限）
+pywin32>=306      # Win32 DWM API 访问
 ```

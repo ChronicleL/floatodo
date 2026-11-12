@@ -5,13 +5,12 @@ FloaTodo — 原生 Neumorphic 主窗体
 """
 import sys
 from pathlib import Path
-from datetime import datetime
 from PySide6.QtCore import Qt, QTimer, QPoint, QObject, QEvent
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QFrame, QSystemTrayIcon, QMenu, QApplication
 )
-from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QAction, QMouseEvent, QCursor
+from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter, QAction, QMouseEvent
 
 from core.pomodoro import PomodoroCore
 from core.task_manager import TaskManager
@@ -20,7 +19,7 @@ from core.models import PomodoroPhase
 import config.settings as settings_mod
 
 from ui_qt.styles import (
-    BG_HEX, BG_PRESSED_HEX, TEXT_PRI_HEX, TEXT_SEC_HEX, TEXT_MUTED_HEX,
+    BG_HEX, BG_PRESSED_HEX, TEXT_PRI_HEX, TEXT_SEC_HEX,
     ACCENT_WORK, MAIN_QSS
 )
 from ui_qt.title_bar import TitleBar
@@ -31,7 +30,6 @@ from ui_qt.settings_dialog import SettingsDialog
 from ui_qt.sound_manager import get_sound_manager
 from ui_qt.window_effects import enable_glass, disable_glass
 
-WEEKDAY_ZH = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
 # ── 边缘拖拽缩放（纯 Qt 实现，无 Win32 ctypes）────────────────────────
 # 通过应用级事件过滤器检测窗口边缘，调用 QWindow.startSystemResize()
@@ -490,6 +488,8 @@ class MainWindow(QMainWindow):
         self.dial.trigger_completion_ripple()
 
     def _notify_phase_change(self, phase: str):
+        if phase == "idle":
+            return   # reset/init 不触发提示音与波纹
         sound_type = "done" if phase == "long" else "next"
         self.sound_mgr.play(sound_type, self.cfg)
 
@@ -551,6 +551,9 @@ class MainWindow(QMainWindow):
         self.task_list_view._update_header_stats(self.task_mgr.tasks)
 
     def _delete_task(self, task_id: int):
+        if self.task_timer.active_task_id == task_id:
+            self.task_timer.stop()
+            self.task_list_view.set_active_timer(None)
         self.task_mgr.delete_task(task_id)
         self.task_list_view._update_header_stats(self.task_mgr.tasks)
 
@@ -587,6 +590,8 @@ class MainWindow(QMainWindow):
         self.title_bar.set_mini_mode(self._is_mini)
 
         if self._is_mini:
+            # 进入迷你模式前保存当前位置，以便退出迷你或关闭时恢复
+            self._pre_mini_pos = self.pos()
             self.btn_skip.hide()
             self.btn_more.hide()
             self.label_next_stage.hide()
@@ -627,6 +632,9 @@ class MainWindow(QMainWindow):
             self.setMinimumSize(self._min_w, int(self._min_w * self._aspect))
             self.setMaximumSize(self._max_w, int(self._max_w * self._aspect))
             self.resize(*self._normal_size)
+            # 恢复进入迷你前的窗口位置
+            if hasattr(self, "_pre_mini_pos"):
+                self.move(self._pre_mini_pos)
 
     # ── 卡片样式统一入口（glass × mini 两个维度）────────────────────────
     def _apply_card_style(self) -> None:
@@ -679,14 +687,37 @@ class MainWindow(QMainWindow):
                 self.move(x, y)
 
     def closeEvent(self, event):
-        if not self._is_mini:
+        # H1: 关闭前保存运行中任务计时器耗时
+        if self.task_timer.active_task_id is not None:
+            task_id = self.task_timer.active_task_id
+            elapsed = self.task_timer.stop()
+            self.task_mgr.update_elapsed(task_id, elapsed)
+
+        # M2: 迷你模式下用进入前保存的正常位置
+        if self._is_mini:
+            pos = getattr(self, "_pre_mini_pos", None)
+            if pos:
+                self.cfg["window_x"] = pos.x()
+                self.cfg["window_y"] = pos.y()
+        else:
             pos = self.pos()
             self.cfg["window_x"] = pos.x()
             self.cfg["window_y"] = pos.y()
+
         self.cfg["total_tomatoes"] = self.total_tomatoes
         try:
             settings_mod.save(self.cfg)
         except Exception:
             pass
+
+        # L6: 移除应用级事件过滤器
+        QApplication.instance().removeEventFilter(self._resize_filter)
+        # L5: 关闭 DB 连接（触发 WAL checkpoint）
+        try:
+            from utils.db import close as db_close
+            db_close()
+        except Exception:
+            pass
+
         self.tray.hide()
         event.accept()

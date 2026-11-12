@@ -6,11 +6,11 @@ import math
 from PySide6.QtCore import Qt, QRectF, QPointF, Signal, QTimer
 from PySide6.QtWidgets import QWidget
 from PySide6.QtGui import (
-    QPainter, QColor, QPen, QBrush, QFont, QLinearGradient
+    QPainter, QColor, QPen, QFont, QLinearGradient
 )
 
 from ui_qt.styles import (
-    COLOR_SD, COLOR_SL, COLOR_TEXT_PRI, COLOR_TEXT_SEC, COLOR_TEXT_MUTED,
+    COLOR_SD, COLOR_SL, COLOR_TEXT_PRI,
     ACCENT_WORK, ACCENT_SHORT, ACCENT_LONG, ACCENT_IDLE
 )
 

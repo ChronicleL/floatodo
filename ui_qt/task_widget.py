@@ -358,38 +358,34 @@ class _TaskDropArea(QWidget):
         p.drawEllipse(8, self._indicator_y - 3, 6, 6)
 
     def _drop_index(self, pos) -> int:
-        """返回拖入目标在 layout 中的插入位置索引（stretch 之前）。"""
+        """返回拖入目标在 layout 中的插入位置索引（stretch 之前）。
+        跳过不可见 widget（如 empty_label），避免 index 偏移导致排序错乱。"""
         layout = self.layout()
         if layout is None:
             return 0
-        # layout 末尾是 stretch，task widget 在 count-1 个
         for i in range(layout.count() - 1):
             item = layout.itemAt(i)
             w = item.widget() if item else None
-            if w is None:
+            if w is None or not w.isVisible():
                 continue
             if pos.y() < w.geometry().y() + w.height() // 2:
                 return i
-        return layout.count() - 1   # 最后一个 task widget 之后 / stretch 之前
+        return layout.count() - 1
 
     def _indicator_pos_y(self, pos) -> int:
         layout = self.layout()
         if layout is None:
             return pos.y()
+        last_visible = None
         for i in range(layout.count() - 1):
             item = layout.itemAt(i)
             w = item.widget() if item else None
-            if w is None:
+            if w is None or not w.isVisible():
                 continue
             if pos.y() < w.geometry().y() + w.height() // 2:
                 return max(0, w.geometry().top() - 2)
-        # 最后一个 task widget 下边缘
-        for i in range(layout.count() - 2, -1, -1):
-            item = layout.itemAt(i)
-            w = item.widget() if item else None
-            if w:
-                return w.geometry().bottom() + 2
-        return pos.y()
+            last_visible = w
+        return (last_visible.geometry().bottom() + 2) if last_visible else pos.y()
 
 
 # ── 任务列表视图 ────────────────────────────────────────────────────────
@@ -565,6 +561,8 @@ class TaskListView(QWidget):
             w = self._task_widgets.pop(task_id)
             w.setParent(None)
             w.deleteLater()
+        if self._active_timer_id == task_id:
+            self._active_timer_id = None
         self.task_deleted.emit(task_id)
         if not self._task_widgets:
             self.empty_label.show()
